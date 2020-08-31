@@ -18,7 +18,7 @@ krill$MOATS<-as.factor(krill$MOATS)
 krill$telsonLength<-as.numeric(krill$telsonLength)
 
 #Basic plot comparing telson length and wet weight
-plot(krill$telsonLength, krill$wetWeight)
+plot(krill$telsonLength, krill$wetWeight*1000)
 ```
 
 ```{r ggplot, yo}
@@ -26,8 +26,9 @@ library(ggplot2)
 
 #Pretty scatter plot of all length vs. weight
 ggplot(krill, aes(telsonLength, wetWeight*1000)) + 
-  geom_point(aes(colour = Treatment)) +
-  ggtitle("Krill telson length vs. wet weight") + xlab("Wet weight (mg)") + ylab("Telson length (mm)")
+  geom_point(aes(colour = Treatment))  +
+  geom_smooth(method = "lm") +
+  ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
 
 #Facet wrap plot (by treatment)
 ggplot(krill, aes(telsonLength, wetWeight*1000, colour = MOATS)) + 
@@ -44,10 +45,12 @@ ggplot(krill, aes(telsonLength, wetWeight*1000, colour = Treatment)) +
 ```{r just some boxplots}
 
 ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) +
-  geom_boxplot()
+  geom_boxplot() +
+  ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
 
 ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) + 
-  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2))
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
  
 ```
 
@@ -71,6 +74,7 @@ colnames(Krill_Stats) [1:6] <-c("Average telson Length", "Median Telson Length",
 
 #And what do you got
 View(Krill_Stats)
+write.csv(Krill_Stats, "C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/krillStats.csv")
 ```
 
 ```{r Cannibalizing Emmas code for telson length}
@@ -221,9 +225,9 @@ ggplot(summaryForErrorBars, aes(x = MOATS,y = wetWeight)) +
 #Using a mixed model to find significant differences
 #Honestly don't know if I'm doing this part right, probably not
 
-library(nlme)
-library(lme4)
-library(lmerTest)
+#library(nlme)
+#library(lme4)
+#library(lmerTest)
 
 #overall statistical significance for telson length
 fitTreatTelLength <- lmer(telsonLength ~ Treatment + (1|MOATS), data = krill)

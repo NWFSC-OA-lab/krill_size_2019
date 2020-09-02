@@ -1,14 +1,20 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+    code_folding: hide
+    theme: sandstone
+    highlight: zenburn
 ---
+
+
 ```{r Read data in, base plot}
 #Read in data
-krill <- read.csv("C:/Users/Danielle.Perez/Documents/Krill 2019/EndofStudyKrill_organizedbyFASTINGhours.csv")
+krill <- read.csv("C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/EndofStudyKrill_organizedbyFASTINGhours.csv")
 
 #Remove unecessary columns
 krill <- krill[-c(2, 5:7, 10:11, 13:26)]
-
 #Rename columns
 names(krill)[4] <- "telsonLength"
 names(krill)[5] <- "wetWeight"
@@ -19,6 +25,8 @@ krill$telsonLength<-as.numeric(krill$telsonLength)
 
 #Basic plot comparing telson length and wet weight
 plot(krill$telsonLength, krill$wetWeight*1000)
+
+lm(formula = krill$telsonLength ~ krill$wetWeight)
 ```
 
 ```{r ggplot, yo}
@@ -51,6 +59,14 @@ ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) +
 ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) + 
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
+
+ggplot(krill, aes(Treatment, telsonLength)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill telson length at treatment") + xlab("Treatment") + ylab("Telson length (mm)")
+
+ggplot(krill, aes(Treatment, (wetWeight*1000)/telsonLength)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill weight/length vs treatment") + xlab("Treatment") + ylab("Wet weight / Telson length (mg/mm)")
  
 ```
 
@@ -149,8 +165,8 @@ ggplot(summaryForErrorBars, aes(x = MOATS,y = telsonLength)) +
   theme_bw(base_size = 15)
 ```
 
-```{r Do the same thing for weight?}
-### Weight STATISTICS
+```{r Do the same thing for weight}
+# Weight STATISTICS
 
 #Function to calculate standard errors and CI for error bars
 ## Gives count, mean, standard deviation, standard error of the mean, and confidence interval (default 95%).
@@ -226,8 +242,8 @@ ggplot(summaryForErrorBars, aes(x = MOATS,y = wetWeight)) +
 #Honestly don't know if I'm doing this part right, probably not
 
 #library(nlme)
-#library(lme4)
-#library(lmerTest)
+library(lme4)
+library(lmerTest)
 
 #overall statistical significance for telson length
 fitTreatTelLength <- lmer(telsonLength ~ Treatment + (1|MOATS), data = krill)

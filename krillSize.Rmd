@@ -93,6 +93,30 @@ View(Krill_Stats)
 write.csv(Krill_Stats, "C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/krillStats.csv")
 ```
 
+
+```{r Correlation}
+cor(krill$telsonLength, krill$wetWeight)
+plot(telsonLength~wetWeight, krill)
+avg_tel <- mean(krill$telsonLength)
+abline(h = avg_tel)
+
+tel_weight <- lm(telsonLength~wetWeight, krill)
+abline(tel_weight)
+tel_weight
+```
+
+```{r Linear model fixed at treatmen}
+linearMod_TL <- lm(telsonLength ~ Treatment, data = krill)
+print(linearMod_TL)
+summary(linearMod_TL)
+
+
+linearMod_WW <- lm(wetWeight ~ Treatment, data = krill)
+print(linearMod_WW)
+summary(linearMod_WW)
+```
+
+
 ```{r Cannibalizing Emmas code for telson length}
 ### LENGTH STATISTICS
 
@@ -256,5 +280,41 @@ summary(fitTreatWetWeight)
 #p value = 0.00525, overall treatment is significant
 #Don't think anything is significant, but not sure where ambient is?
 ##There is more to Emma's code, but not sure how relevant it is since she was looking at stage as well as cL at different treatments##
+```
+
+```{r Running ratio analysis}
+
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(reshape)
+library(lmerTest)
+
+#function that determines the average ratio for W/L 
+ratio <- function(dataName) {
+  slant <- dataName$telsonLength/dataName$wetWeight
+  return(slant)
+}
+
+#creating a new column for each W/L ratio
+krill$Ratio <- ""
+all <- ratio(krill)
+krill$Ratio <- all
+
+##AIC (overall statistics)
+# make different lmer models that randomize different variables
+# use AIC to find the model that best fits the data
+
+#AIC
+fitAllT <- lmer(Ratio~Treatment + (1|MOATS), data = krill, na.action = na.omit)
+summary(fitAllT)
+
+
+
+
+
+
 ```
 

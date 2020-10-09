@@ -11,10 +11,14 @@ output:
 
 ```{r Read data in, base plot}
 #Read in data
-krill <- read.csv("C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/EndofStudyKrill_organizedbyFASTINGhours.csv")
+krill <- read.csv("C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/EndofStudyKrill_organizedbyFASTINGhours_edit.csv")
 
-#Remove unecessary columns
+#Remove unnecessary columns
 krill <- krill[-c(2, 5:7, 10:11, 13:26)]
+
+#Remove ambient treatment
+krill <- krill[!(krill$Treatment=="AMB"),]
+
 #Rename columns
 names(krill)[4] <- "telsonLength"
 names(krill)[5] <- "wetWeight"
@@ -27,6 +31,15 @@ krill$telsonLength<-as.numeric(krill$telsonLength)
 plot(krill$telsonLength, krill$wetWeight*1000)
 
 lm(formula = krill$telsonLength ~ krill$wetWeight)
+
+#Creating a Body condition score as the residual from a regression of log krill mass against telson length
+body_condition <- lm(log(wetWeight) ~ telsonLength, data = krill)
+print(body_condition)
+summary(body_condition)
+plot(body_condition)
+
+#Add new column to krill data frame with residuals/body condition values 
+krill$resid <- body_condition$residuals
 ```
 
 ```{r ggplot, yo}
@@ -52,21 +65,40 @@ ggplot(krill, aes(telsonLength, wetWeight*1000, colour = Treatment)) +
 
 ```{r just some boxplots}
 
+#Basic boxplot of wet weight and telson length by treatment
 ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) +
   geom_boxplot() +
   ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
 
+#Notched boxplot of length and weight by treatment + points
 ggplot(krill, aes(telsonLength, wetWeight*1000, color = Treatment)) + 
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill telson length vs. wet weight") + xlab("Telson length (mm)") + ylab("Wet weight (mg)")
 
+#Length at treatment
 ggplot(krill, aes(Treatment, telsonLength)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill telson length at treatment") + xlab("Treatment") + ylab("Telson length (mm)")
 
+#Weight at treatment
+ggplot(krill, aes(Treatment, wetWeight*10000)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill wet weight at treatment") + xlab("Treatment") + ylab("Wet weight (mg)")
+
+#Length by weight at treatment
 ggplot(krill, aes(Treatment, (wetWeight*1000)/telsonLength)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill weight/length vs treatment") + xlab("Treatment") + ylab("Wet weight / Telson length (mg/mm)")
+
+#residuals by treatment
+ggplot(krill, aes(Treatment, resid)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill body condition at treatment") + xlab("Treatment") + ylab("Body condition")
+
+#residuals by treatment colored by MOATS
+ggplot(krill, aes(Treatment, resid, color = MOATS)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Krill body condition at treatment") + xlab("Treatment") + ylab("Body condition")
  
 ```
 
@@ -74,7 +106,7 @@ ggplot(krill, aes(Treatment, (wetWeight*1000)/telsonLength)) +
 library(tidyr)
 
 #Remove NAs
-krill <- na.omit(krill)
+#krill <- na.omit(krill)
 
 #Calculate mean and standard deviation for each treatment
 TL_Avg <- tapply(krill$telsonLength, (krill$Treatment), mean)
@@ -83,13 +115,16 @@ TL_Std <- tapply(krill$telsonLength, (krill$Treatment), sd)
 WW_Avg <- tapply(krill$wetWeight, (krill$Treatment), mean)
 WW_Med <- tapply(krill$wetWeight, (krill$Treatment), median)
 WW_Std <- tapply(krill$wetWeight, (krill$Treatment), sd)
+BC_Avg <- tapply(krill$resid, (krill$Treatment), mean)
+BC_Med <- tapply(krill$resid, (krill$Treatment), median)
+BC_Std <- tapply(krill$resid, (krill$Treatment), sd)
 
 #Put it all together
-Krill_Stats <- cbind(TL_Avg, TL_Med, TL_Std, WW_Avg, WW_Med, WW_Std)
-colnames(Krill_Stats) [1:6] <-c("Average telson Length", "Median Telson Length", "Telson Length SD", "Average Wet Weight", "Median Wet Weight", "Wet Weight SD")
+Krill_Stats <- cbind(TL_Avg, TL_Med, TL_Std, WW_Avg, WW_Med, WW_Std, BC_Avg, BC_Med, BC_Std)
+colnames(Krill_Stats) [1:9] <-c("Avg telson Length", "Med Telson Length", "Telson Length SD", "Avg Wet Weight", "Med Wet Weight", "Wet Weight SD", "Avg Body Condition", "Med Body Condition", "Body Condition SD")
 
 #And what do you got
-View(Krill_Stats)
+#View(Krill_Stats)
 write.csv(Krill_Stats, "C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/krillStats.csv")
 ```
 
@@ -105,15 +140,21 @@ abline(tel_weight)
 tel_weight
 ```
 
-```{r Linear model fixed at treatmen}
+```{r Linear model fixed at treatment}
+library(modelr)
+
+#linear model of telson length by treatment
 linearMod_TL <- lm(telsonLength ~ Treatment, data = krill)
 print(linearMod_TL)
 summary(linearMod_TL)
 
-
+#linear model of wet weight by treatment
 linearMod_WW <- lm(wetWeight ~ Treatment, data = krill)
 print(linearMod_WW)
 summary(linearMod_WW)
+
+
+#residuals by treatment with MOATS as random factor
 ```
 
 
@@ -261,6 +302,79 @@ ggplot(summaryForErrorBars, aes(x = MOATS,y = wetWeight)) +
   theme_bw(base_size = 15)
 ```
 
+
+```{r And again for body condition}
+# Body condition STATISTICS
+
+#Function to calculate standard errors and CI for error bars
+## Gives count, mean, standard deviation, standard error of the mean, and confidence interval (default 95%).
+##   data: a data frame.
+##   measurevar: the name of a column that contains the variable to be summarized
+##   groupvars: a vector containing names of columns that contain grouping variables
+##   na.rm: a boolean that indicates whether to ignore NA's
+##   conf.interval: the percent range of the confidence interval (default is 95%)
+
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+  library(plyr)
+  
+  # New version of length which can handle NA's: if na.rm==T, don't count them
+  length2 <- function (x, na.rm=FALSE) {
+    if (na.rm) sum(!is.na(x))
+    else       length(x)
+  }
+  
+  # This does the summary. For each group's data frame, return a vector with
+  # N, mean, and sd
+  datac <- ddply(data, groupvars, .drop=.drop,
+                 .fun = function(xx, col) {
+                   c(N    = length2(xx[[col]], na.rm=na.rm),
+                     mean = mean   (xx[[col]], na.rm=na.rm),
+                     sd   = sd     (xx[[col]], na.rm=na.rm)
+                   )
+                 },
+                 measurevar
+  )
+  
+    # Rename the "mean" column    
+  datac <- rename(datac, c("mean" = measurevar))
+  
+  datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+  
+  # Confidence interval multiplier for standard error
+  # Calculate t-statistic for confidence interval: 
+  # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+  ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+  datac$ci <- datac$se * ciMult
+  
+  return(datac)
+}
+
+summaryForErrorBars <- summarySE(data = krill, measurevar = "resid", 
+                                 groupvars = c("MOATS", "Treatment"), na.rm = TRUE)
+
+summaryForErrorBars$upperBar <- summaryForErrorBars$resid + summaryForErrorBars$ci
+summaryForErrorBars$lowerBar <- summaryForErrorBars$resid - summaryForErrorBars$ci
+
+ggplot(summaryForErrorBars, aes(x = Treatment, y = resid, colour = MOATS)) +
+  geom_errorbar(aes(ymin = lowerBar, ymax = upperBar))+
+  geom_point(size = 3) +
+  geom_jitter(data=krill, aes(x = Treatment, y = resid, colour = MOATS), alpha = 0.4,
+              position = position_jitter(0.4)) +
+  ggtitle("Treatment Comparison of Body Condition") +  ylab("Body condition") +
+  theme_bw(base_size = 15) 
+
+#separate confidence intervals by stage (not sure if we really need this or not)
+ggplot(summaryForErrorBars, aes(x = MOATS,y = resid)) +
+  geom_errorbar(aes(ymin = lowerBar, ymax = upperBar))+
+  geom_point(size = 3) +
+  geom_jitter(data = krill, aes(x = MOATS,y = resid), alpha = 0.4,
+              position = position_jitter(0.4)) +
+  ggtitle("Treatment Comparison by MOATS") +  ylab("Body condition") +
+  facet_wrap(~Treatment) + 
+  theme_bw(base_size = 15)
+```
+
 ```{r Repeated measures analysis}
 #Using a mixed model to find significant differences
 #Honestly don't know if I'm doing this part right, probably not
@@ -276,6 +390,10 @@ summary(fitTreatTelLength)
 #overall statistical significance for wet weight
 fitTreatWetWeight <- lmer(wetWeight ~ Treatment + (1|MOATS), data = krill)
 summary(fitTreatWetWeight)
+
+#overall statistical significance for body condition
+fitTreatbodyCondition <- lmer(resid ~ Treatment + (1|MOATS), data = krill)
+summary(fitTreatbodyCondition)
 
 #p value = 0.00525, overall treatment is significant
 #Don't think anything is significant, but not sure where ambient is?

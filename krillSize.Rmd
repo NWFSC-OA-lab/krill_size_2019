@@ -40,6 +40,11 @@ plot(body_condition)
 
 #Add new column to krill data frame with residuals/body condition values 
 krill$resid <- body_condition$residuals
+
+#Add Fulton's K
+krill$fulton <- krill$wetWeight*1000 / krill$telsonLength^3
+##Ok, but did I do this right??
+
 ```
 
 ```{r ggplot, yo}
@@ -90,16 +95,24 @@ ggplot(krill, aes(Treatment, (wetWeight*1000)/telsonLength)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill weight/length vs treatment") + xlab("Treatment") + ylab("Wet weight / Telson length (mg/mm)")
 
-#residuals by treatment
+#Residuals by treatment
 ggplot(krill, aes(Treatment, resid)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill body condition at treatment") + xlab("Treatment") + ylab("Body condition")
 
-#residuals by treatment colored by MOATS
+#Residuals by treatment colored by MOATS
 ggplot(krill, aes(Treatment, resid, color = MOATS)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Krill body condition at treatment") + xlab("Treatment") + ylab("Body condition")
- 
+
+#Fulton's K by treatment
+ ggplot(krill, aes(Treatment, fulton)) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("K")
+#Fulton's K taking out that larger outliers
+  ggplot(krill, aes(Treatment, fulton)) + ylim(0, 4) +
+  geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) + 
+  ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("K")
 ```
 
 ```{r Stats, yo}
@@ -118,10 +131,13 @@ WW_Std <- tapply(krill$wetWeight, (krill$Treatment), sd)
 BC_Avg <- tapply(krill$resid, (krill$Treatment), mean)
 BC_Med <- tapply(krill$resid, (krill$Treatment), median)
 BC_Std <- tapply(krill$resid, (krill$Treatment), sd)
+FT_Avg <- tapply(krill$fulton, (krill$Treatment), mean)
+FT_Med <- tapply(krill$fulton, (krill$Treatment), median)
+FT_Std <- tapply(krill$fulton, (krill$Treatment), sd)
 
 #Put it all together
-Krill_Stats <- cbind(TL_Avg, TL_Med, TL_Std, WW_Avg, WW_Med, WW_Std, BC_Avg, BC_Med, BC_Std)
-colnames(Krill_Stats) [1:9] <-c("Avg telson Length", "Med Telson Length", "Telson Length SD", "Avg Wet Weight", "Med Wet Weight", "Wet Weight SD", "Avg Body Condition", "Med Body Condition", "Body Condition SD")
+Krill_Stats <- cbind(TL_Avg, TL_Med, TL_Std, WW_Avg, WW_Med, WW_Std, BC_Avg, BC_Med, BC_Std, FT_Avg, FT_Med, FT_Std)
+colnames(Krill_Stats) [1:12] <-c("Avg telson Length", "Med Telson Length", "Telson Length SD", "Avg Wet Weight", "Med Wet Weight", "Wet Weight SD", "Avg Body Condition", "Med Body Condition", "Body Condition SD", "Avg Fulton's K", "Med Fulton's K", "Fulton's K SD")
 
 #And what do you got
 #View(Krill_Stats)
@@ -152,9 +168,6 @@ summary(linearMod_TL)
 linearMod_WW <- lm(wetWeight ~ Treatment, data = krill)
 print(linearMod_WW)
 summary(linearMod_WW)
-
-
-#residuals by treatment with MOATS as random factor
 ```
 
 
@@ -428,11 +441,5 @@ krill$Ratio <- all
 #AIC
 fitAllT <- lmer(Ratio~Treatment + (1|MOATS), data = krill, na.action = na.omit)
 summary(fitAllT)
-
-
-
-
-
-
 ```
 

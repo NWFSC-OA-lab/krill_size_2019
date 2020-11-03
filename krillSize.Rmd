@@ -43,7 +43,7 @@ krill$resid <- body_condition$residuals
 
 #Add Fulton's K
 krill$fulton <- krill$wetWeight*1000 / krill$telsonLength^3
-##Ok, but did I do this right??
+##Ok, but did I do this right?? Only have telson length, not complete length, may need multiplier
 
 ```
 
@@ -110,9 +110,18 @@ ggplot(krill, aes(Treatment, resid, color = MOATS)) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
   ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("K")
 #Fulton's K taking out that larger outliers
-  ggplot(krill, aes(Treatment, fulton)) + ylim(0, 4) +
+ggplot(krill, aes(Treatment, fulton)) + ylim(0, 4) +
   geom_boxplot(notch = TRUE) + geom_jitter(shape=16, position=position_jitter(0.2)) + 
   ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("K")
+
+#Fulton's K by treatment, colored by MOATS
+ggplot(krill, aes(Treatment, fulton, color = MOATS)) +
+  geom_boxplot(notch = FALSE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("Fulton's K")
+#Again without the outliers
+ggplot(krill, aes(Treatment, fulton, color = MOATS)) +  ylim(0, 4) +
+  geom_boxplot(notch = FALSE) + geom_jitter(shape=16, position=position_jitter(0.2)) +
+  ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("Fulton's K")
 ```
 
 ```{r Stats, yo}
@@ -168,6 +177,16 @@ summary(linearMod_TL)
 linearMod_WW <- lm(wetWeight ~ Treatment, data = krill)
 print(linearMod_WW)
 summary(linearMod_WW)
+
+#linear model of body condition by treatment
+linearMod_resid <- lm(resid ~ Treatment, data = krill)
+print(linearMod_resid)
+summary(linearMod_resid)
+
+#linear model of Fulton's K by treatment
+linearMod_fulton <- lm(fulton ~ Treatment, data = krill)
+print(linearMod_fulton)
+summary(linearMod_fulton)
 ```
 
 
@@ -388,6 +407,80 @@ ggplot(summaryForErrorBars, aes(x = MOATS,y = resid)) +
   theme_bw(base_size = 15)
 ```
 
+
+```{r Once more, with feeling}
+# Fulton's K STATISTICS
+
+#Function to calculate standard errors and CI for error bars
+## Gives count, mean, standard deviation, standard error of the mean, and confidence interval (default 95%).
+##   data: a data frame.
+##   measurevar: the name of a column that contains the variable to be summarized
+##   groupvars: a vector containing names of columns that contain grouping variables
+##   na.rm: a boolean that indicates whether to ignore NA's
+##   conf.interval: the percent range of the confidence interval (default is 95%)
+
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+  library(plyr)
+  
+  # New version of length which can handle NA's: if na.rm==T, don't count them
+  length2 <- function (x, na.rm=FALSE) {
+    if (na.rm) sum(!is.na(x))
+    else       length(x)
+  }
+  
+  # This does the summary. For each group's data frame, return a vector with
+  # N, mean, and sd
+  datac <- ddply(data, groupvars, .drop=.drop,
+                 .fun = function(xx, col) {
+                   c(N    = length2(xx[[col]], na.rm=na.rm),
+                     mean = mean   (xx[[col]], na.rm=na.rm),
+                     sd   = sd     (xx[[col]], na.rm=na.rm)
+                   )
+                 },
+                 measurevar
+  )
+  
+    # Rename the "mean" column    
+  datac <- rename(datac, c("mean" = measurevar))
+  
+  datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+  
+  # Confidence interval multiplier for standard error
+  # Calculate t-statistic for confidence interval: 
+  # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+  ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+  datac$ci <- datac$se * ciMult
+  
+  return(datac)
+}
+
+summaryForErrorBars <- summarySE(data = krill, measurevar = "fulton", 
+                                 groupvars = c("MOATS", "Treatment"), na.rm = TRUE)
+
+summaryForErrorBars$upperBar <- summaryForErrorBars$fulton + summaryForErrorBars$ci
+summaryForErrorBars$lowerBar <- summaryForErrorBars$fulton - summaryForErrorBars$ci
+
+ggplot(summaryForErrorBars, aes(x = Treatment, y = fulton, colour = MOATS)) +
+  geom_errorbar(aes(ymin = lowerBar, ymax = upperBar))+
+  geom_point(size = 3) +
+  geom_jitter(data=krill, aes(x = Treatment, y = fulton, colour = MOATS), alpha = 0.4,
+              position = position_jitter(0.4)) +
+  ggtitle("Treatment Comparison of Fulton's K") +  ylab("Fulton's K") +
+  theme_bw(base_size = 15) 
+
+#separate confidence intervals by stage (not sure if we really need this or not)
+ggplot(summaryForErrorBars, aes(x = MOATS,y = fulton)) +
+  geom_errorbar(aes(ymin = lowerBar, ymax = upperBar))+
+  geom_point(size = 3) +
+  geom_jitter(data = krill, aes(x = MOATS,y = fulton), alpha = 0.4,
+              position = position_jitter(0.4)) +
+  ggtitle("Treatment Comparison by MOATS") +  ylab("Fulton's K") +
+  facet_wrap(~Treatment) + 
+  theme_bw(base_size = 15)
+```
+
+
 ```{r Repeated measures analysis}
 #Using a mixed model to find significant differences
 #Honestly don't know if I'm doing this part right, probably not
@@ -407,6 +500,10 @@ summary(fitTreatWetWeight)
 #overall statistical significance for body condition
 fitTreatbodyCondition <- lmer(resid ~ Treatment + (1|MOATS), data = krill)
 summary(fitTreatbodyCondition)
+
+#overall statistical significance for Fulton's K
+fitTreatFulton <- lmer(fulton ~ Treatment + (1|MOATS), data = krill)
+summary(fitTreatFulton)
 
 #p value = 0.00525, overall treatment is significant
 #Don't think anything is significant, but not sure where ambient is?

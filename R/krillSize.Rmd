@@ -11,7 +11,8 @@ output:
 
 ```{r Read data in, base plot}
 #Read in data
-krill <- read.csv("C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/EndofStudyKrill_organizedbyFASTINGhours_edit.csv")
+library(here)
+krill <- read.csv(here("data_raw", "EndofStudyKrill_organizedbyFASTINGhours_edit.csv"))
 
 #Remove unnecessary columns
 krill <- krill[-c(2, 5:7, 10:11, 13:26)]
@@ -126,6 +127,7 @@ ggplot(krill, aes(Treatment, fulton, color = MOATS)) +  ylim(0, 4) +
 
 ```{r Stats, yo}
 library(tidyr)
+library(here)
 
 #Remove NAs
 #krill <- na.omit(krill)
@@ -150,7 +152,7 @@ colnames(Krill_Stats) [1:12] <-c("Avg telson Length", "Med Telson Length", "Tels
 
 #And what do you got
 #View(Krill_Stats)
-write.csv(Krill_Stats, "C:/Users/Danielle.Perez/Documents/Krill 2019/krillSize/krillStats.csv")
+ write_csv(here("output", "Krill_Stats.csv"))
 ```
 
 

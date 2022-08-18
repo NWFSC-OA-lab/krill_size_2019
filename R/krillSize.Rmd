@@ -8,10 +8,16 @@ output:
     highlight: zenburn
 ---
 
+```{r libraries}
+library(here)
+library(tidyverse)
+library(modelr)
+```
+
 
 ```{r Read data in, base plot}
 #Read in data
-library(here)
+
 krill <- read.csv(here("data_raw", "EndofStudyKrill_organizedbyFASTINGhours_edit.csv"))
 
 #Remove unnecessary columns
@@ -37,7 +43,7 @@ lm(formula = krill$telsonLength ~ krill$wetWeight)
 body_condition <- lm(log(wetWeight) ~ telsonLength, data = krill)
 print(body_condition)
 summary(body_condition)
-plot(body_condition)
+#plot(body_condition)
 
 #Add new column to krill data frame with residuals/body condition values 
 krill$resid <- body_condition$residuals
@@ -49,7 +55,6 @@ krill$fulton <- krill$wetWeight*1000 / krill$telsonLength^3
 ```
 
 ```{r ggplot, yo}
-library(ggplot2)
 
 #Pretty scatter plot of all length vs. weight
 ggplot(krill, aes(telsonLength, wetWeight*1000)) + 
@@ -125,9 +130,30 @@ ggplot(krill, aes(Treatment, fulton, color = MOATS)) +  ylim(0, 4) +
   ggtitle("Fulton's K at treatment") + xlab("Treatment") + ylab("Fulton's K")
 ```
 
+```{r poster-plot}
+#Futlon K removing outliers
+# oceans in high so2 poster plot
+
+krill %>%
+  mutate(Treatment = factor(Treatment, levels = c("CUR", "TMP", "CHG"))) %>%
+  filter(fulton < 4) %>%
+  ggplot(aes(Treatment, fulton, color = Treatment)) +
+  geom_boxplot(notch = FALSE, outlier.shape = NA) + 
+  geom_jitter(shape=16, position=position_jitter(0.2), size = 2) +
+  scale_color_manual(values = c("mediumblue", "orange1", "limegreen")) +
+  scale_x_discrete(labels = c("Current Ocean", "Heat Wave", "Future Ocean")) +
+  xlab("Treatment") + 
+  ylab("Fulton's K") +
+  theme_bw(base_size = 32) +
+  theme(legend.position="none")
+
+ggsave(here("figs", "krill_size_poster.jpeg"))
+
+```
+
+
+
 ```{r Stats, yo}
-library(tidyr)
-library(here)
 
 #Remove NAs
 #krill <- na.omit(krill)
@@ -152,7 +178,7 @@ colnames(Krill_Stats) [1:12] <-c("Avg telson Length", "Med Telson Length", "Tels
 
 #And what do you got
 #View(Krill_Stats)
- write_csv(here("output", "Krill_Stats.csv"))
+ write_csv(as.data.frame(Krill_Stats), here("output", "Krill_Stats.csv"))
 ```
 
 
@@ -168,7 +194,6 @@ tel_weight
 ```
 
 ```{r Linear model fixed at treatment}
-library(modelr)
 
 #linear model of telson length by treatment
 linearMod_TL <- lm(telsonLength ~ Treatment, data = krill)
